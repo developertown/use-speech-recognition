@@ -23,6 +23,5 @@ const {
   resetTranscript,
   startListening,
   stopListening,
-  abortListening,
 } = useSpeechRecognition(options);
 ```
