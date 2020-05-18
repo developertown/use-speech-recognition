@@ -12,6 +12,7 @@ const Grid: React.FC<PropsWithChildren<{}>> = ({ children }) => (
 
 export const SpeechDisplay: React.FC<{}> = () => {
   const {
+    error,
     finalTranscript,
     transcript,
     interimTranscript,
@@ -70,6 +71,12 @@ export const SpeechDisplay: React.FC<{}> = () => {
               <div style={resultBox}>{interimTranscript}</div>
             </div>
           </div>
+
+          {error && (
+            <div className="error" style={{ color: "red" }}>
+              Error: {error}
+            </div>
+          )}
 
           <div>
             <button onClick={startListening}>Start Listening</button>

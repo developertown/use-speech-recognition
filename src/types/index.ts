@@ -7,6 +7,14 @@ declare global {
   }
 }
 
+export type SpeechRecognitionErrorMessage = string;
+export type SpeechRecognitionErrorType = string;
+
+export interface SpeechRecognitionErrorEvent extends Error {
+  error: SpeechRecognitionErrorType;
+  message: SpeechRecognitionErrorMessage;
+}
+
 export interface SpeechRecognitionUtils extends SpeechRecognitionState {
   resetTranscript: () => void;
   startListening: () => void;
@@ -14,6 +22,7 @@ export interface SpeechRecognitionUtils extends SpeechRecognitionState {
 }
 
 export interface SpeechRecognitionState {
+  error?: SpeechRecognitionErrorMessage;
   status: SpeechRecognitionStatus;
   transcript: string; // Transcription of all speech that has been spoken into the microphone. Is equivalent to the final transcript followed by the interim transcript, separated by a space.
   interimTranscript: string; // Current word guesses before adding to transcript

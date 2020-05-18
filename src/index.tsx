@@ -5,9 +5,17 @@ import {
   SpeechRecognitionUtils,
   SpeechRecognitionDisconnectType,
   SpeechRecognitionStatus,
+  SpeechRecognitionErrorEvent,
 } from "./types";
 
-import { setPauseAfterDisconnect, setInterimTranscript, setFinalTranscript, setTranscript, setStatus } from "./actions";
+import {
+  setPauseAfterDisconnect,
+  setInterimTranscript,
+  setFinalTranscript,
+  setTranscript,
+  setStatus,
+  setError,
+} from "./actions";
 import { ERROR_NO_RECOGNITION_SUPPORT } from "./constants";
 
 export const defaultOptions: SpeechRecognitionOptions = {
@@ -27,10 +35,10 @@ function concatTranscripts(...parts: string[]) {
 }
 
 export function useSpeechRecognition(options: SpeechRecognitionOptions = defaultOptions): SpeechRecognitionUtils {
-  const [{ status, pauseAfterDisconnect, interimTranscript, finalTranscript, transcript }, dispatch] = useReducer(
-    speechRecognitionReducer,
-    initialState,
-  );
+  const [
+    { error, status, pauseAfterDisconnect, interimTranscript, finalTranscript, transcript },
+    dispatch,
+  ] = useReducer(speechRecognitionReducer, initialState);
 
   const recognition = useMemo(() => {
     const BrowserSpeechRecognition =
@@ -70,6 +78,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
 
   const resetTranscript = useCallback(() => {
     disconnect(SpeechRecognitionDisconnectType.RESET);
+    dispatch(setError(undefined));
     dispatch(setTranscript(""));
     dispatch(setInterimTranscript(""));
     dispatch(setFinalTranscript(""));
@@ -133,7 +142,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
 
   const onRecognitionError = useCallback(({ error, message }) => {
     dispatch(setStatus(SpeechRecognitionStatus.ERROR));
-    console.error("Speech recognition error detected:", { error, message });
+    dispatch(setError(`${error}: ${message}`));
   }, []);
 
   useEffect(() => {
@@ -166,6 +175,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
   }, [options, recognition, startListening, status, stopListening]);
 
   return {
+    error,
     transcript,
     interimTranscript,
     finalTranscript,
