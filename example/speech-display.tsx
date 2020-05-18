@@ -5,11 +5,21 @@ import { useSpeechRecognition } from "../src";
 import { SpeechRecognitionStatus } from "../src/types";
 
 const Grid: React.FC<PropsWithChildren<{}>> = ({ children }) => (
-  <div style={{ display: "grid", gridTemplateColumns: "100%", gridGap: "1rem" }}>{children}</div>
+  <div style={{ display: "grid", gridTemplateColumns: "100%", gridRowGap: "1rem", gridColumnGap: "1rem" }}>
+    {children}
+  </div>
 );
 
 export const SpeechDisplay: React.FC<{}> = () => {
-  const { listening, finalTranscript, status, startListening, stopListening, resetTranscript } = useSpeechRecognition();
+  const {
+    finalTranscript,
+    transcript,
+    interimTranscript,
+    status,
+    startListening,
+    stopListening,
+    resetTranscript,
+  } = useSpeechRecognition();
   const color = cn({
     blue: status === SpeechRecognitionStatus.READY,
     green: status === SpeechRecognitionStatus.STARTED,
@@ -18,45 +28,60 @@ export const SpeechDisplay: React.FC<{}> = () => {
     black: status === SpeechRecognitionStatus.RESET,
   });
 
-  return (
-    <div style={{ padding: "1rem" }}>
-      <h1>Speech Recognition</h1>
+  const resultBox = {
+    border: "1px solid #bbb",
+    display: "flex",
+    width: "30rem",
+    padding: "1rem",
+    margin: ".25rem 0 .5rem",
+    "border-radius": "3px",
+    "min-height": "56px",
+    "justify-content": "center",
+    "align-items": "center",
+    "background-color": "#eee",
+    "text-align": "center",
+    "font-weight": "bold",
+    "font-size": "1rem",
+  };
 
-      <Grid>
-        <div>
-          <div className="status">
-            Status: <span style={{ color }}>{status}</span>
-          </div>
-          <div className="is-listening">Listening?: {JSON.stringify(listening)}</div>
-          <div className="result">
-            Result:
-            <div
-              style={{
-                border: "1px solid #bbb",
-                borderRadius: "3px",
-                width: "30rem",
-                minHeight: "56px",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                backgroundColor: "#eee",
-                padding: "1rem",
-                textAlign: "center",
-                fontWeight: "bold",
-                fontSize: "1rem",
-              }}
-            >
-              {finalTranscript}
+  return (
+    <>
+      <style></style>
+      <div style={{ padding: "1rem" }}>
+        <h1>Speech Recognition</h1>
+
+        <Grid>
+          <div>
+            <div className="status">
+              Status: <span style={{ color }}>{status}</span>
+            </div>
+            <div className="result">
+              Result (Final Transcript):
+              <div style={resultBox}>{finalTranscript}</div>
+            </div>
+
+            <div className="result">
+              Result (Transcript):
+              <div style={resultBox}>{transcript}</div>
+            </div>
+
+            <div className="result">
+              Result (Interim Transcript):
+              <div style={resultBox}>{interimTranscript}</div>
             </div>
           </div>
-        </div>
 
-        <div>
-          <button onClick={startListening}>Start Listening</button>
-          <button onClick={stopListening}>Stop Listening</button>
-          <button onClick={resetTranscript}>Reset Transcript</button>
-        </div>
-      </Grid>
-    </div>
+          <div>
+            <button onClick={startListening}>Start Listening</button>
+          </div>
+          <div>
+            <button onClick={stopListening}>Stop Listening</button>
+          </div>
+          <div>
+            <button onClick={resetTranscript}>Reset Transcript</button>
+          </div>
+        </Grid>
+      </div>
+    </>
   );
 };

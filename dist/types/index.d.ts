@@ -1,21 +1,23 @@
-export interface SpeechRecognitionUtils {
-    transcript: string;
-    interimTranscript: string;
-    finalTranscript: string;
-    listening: boolean;
-    status: SpeechRecognitionStatus;
-    recognition?: SpeechRecognition;
+declare global {
+    interface Window {
+        webkitSpeechRecognition: unknown;
+        mozSpeechRecognition: unknown;
+        msSpeechRecognition: unknown;
+        oSpeechRecognition: unknown;
+    }
+}
+export interface SpeechRecognitionUtils extends SpeechRecognitionState {
     resetTranscript: () => void;
     startListening: () => void;
     stopListening: () => void;
-    abortListening: () => void;
 }
 export interface SpeechRecognitionState {
     status: SpeechRecognitionStatus;
     transcript: string;
     interimTranscript: string;
     finalTranscript: string;
-    listening: boolean;
+}
+export interface SpeechRecognitionInternalState extends SpeechRecognitionState {
     pauseAfterDisconnect: boolean;
 }
 export declare enum SpeechRecognitionStatus {
@@ -23,8 +25,7 @@ export declare enum SpeechRecognitionStatus {
     STOPPED = "stopped",
     STARTED = "started",
     ERROR = "error",
-    RESET = "reset",
-    ABORTED = "aborted"
+    RESET = "reset"
 }
 export interface SpeechRecognitionOptions {
     autoStart: boolean;
@@ -35,7 +36,6 @@ export interface SpeechRecognitionOptions {
     onStart: () => void;
 }
 export declare enum SpeechRecognitionDisconnectType {
-    ABORT = "ABORT",
     RESET = "RESET",
     STOP = "STOP"
 }

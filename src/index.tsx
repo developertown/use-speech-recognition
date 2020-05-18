@@ -1,5 +1,5 @@
 import { speechRecognitionReducer, initialState } from "./reducer";
-import { useEffect, useCallback, useReducer } from "react";
+import { useEffect, useCallback, useReducer, useMemo } from "react";
 import {
   SpeechRecognitionOptions,
   SpeechRecognitionUtils,
@@ -7,23 +7,8 @@ import {
   SpeechRecognitionStatus,
 } from "./types";
 
-import {
-  setListening,
-  setPauseAfterDisconnect,
-  setInterimTranscript,
-  setFinalTranscript,
-  setTranscript,
-  setStatus,
-} from "./actions";
-
-declare global {
-  interface Window {
-    webkitSpeechRecognition: unknown;
-    mozSpeechRecognition: unknown;
-    msSpeechRecognition: unknown;
-    oSpeechRecognition: unknown;
-  }
-}
+import { setPauseAfterDisconnect, setInterimTranscript, setFinalTranscript, setTranscript, setStatus } from "./actions";
+import { ERROR_NO_RECOGNITION_SUPPORT } from "./constants";
 
 export const defaultOptions: SpeechRecognitionOptions = {
   autoStart: false,
@@ -42,20 +27,26 @@ function concatTranscripts(...parts: string[]) {
 }
 
 export function useSpeechRecognition(options: SpeechRecognitionOptions = defaultOptions): SpeechRecognitionUtils {
-  const BrowserSpeechRecognition =
-    typeof window !== "undefined" &&
-    (window.SpeechRecognition ||
-      window.webkitSpeechRecognition ||
-      window.mozSpeechRecognition ||
-      window.msSpeechRecognition ||
-      window.oSpeechRecognition);
+  const [{ status, pauseAfterDisconnect, interimTranscript, finalTranscript, transcript }, dispatch] = useReducer(
+    speechRecognitionReducer,
+    initialState,
+  );
 
-  const [
-    { listening, status, pauseAfterDisconnect, interimTranscript, finalTranscript, transcript },
-    dispatch,
-  ] = useReducer(speechRecognitionReducer, initialState);
+  const recognition = useMemo(() => {
+    const BrowserSpeechRecognition =
+      typeof window !== "undefined" &&
+      (window.SpeechRecognition ||
+        window.webkitSpeechRecognition ||
+        window.mozSpeechRecognition ||
+        window.msSpeechRecognition ||
+        window.oSpeechRecognition);
 
-  const recognition = BrowserSpeechRecognition ? new BrowserSpeechRecognition() : undefined;
+    if (BrowserSpeechRecognition) {
+      return new BrowserSpeechRecognition();
+    } else {
+      throw new Error(ERROR_NO_RECOGNITION_SUPPORT);
+    }
+  }, []);
 
   const disconnect = useCallback(
     (disconnectType: SpeechRecognitionDisconnectType) => {
@@ -85,29 +76,27 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
   }, [disconnect]);
 
   const startListening = useCallback(() => {
-    if (recognition && !listening) {
+    if (recognition && status !== SpeechRecognitionStatus.STARTED) {
       if (!recognition.continuous) {
         resetTranscript();
       }
+
       try {
         recognition.start();
+        dispatch(setStatus(SpeechRecognitionStatus.STARTED));
       } catch (DOMException) {
         // Tried to start recognition after it has already started - safe to swallow this error
       }
-      dispatch(setStatus(SpeechRecognitionStatus.STARTED));
-      dispatch(setListening(true));
     }
-  }, [listening, recognition, resetTranscript]);
+  }, [status, recognition, resetTranscript]);
 
   const stopListening = useCallback(() => {
     disconnect(SpeechRecognitionDisconnectType.STOP);
     dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
-    dispatch(setListening(false));
   }, [disconnect]);
 
   const updateTranscript = useCallback(
     (event: SpeechRecognitionEvent) => {
-      console.log("updating transcript", event);
       let interim = "";
       let final = "";
       for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -117,6 +106,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
           interim = concatTranscripts(interim, event.results[i][0].transcript);
         }
       }
+
       dispatch(setTranscript(concatTranscripts(final, interim)));
       dispatch(setInterimTranscript(interim));
       dispatch(setFinalTranscript(final));
@@ -129,45 +119,57 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
   );
 
   const onRecognitionDisconnect = useCallback(() => {
-    dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
     if (pauseAfterDisconnect) {
-      dispatch(setListening(false));
+      dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
     } else if (recognition) {
       if (recognition.continuous) {
         startListening();
       } else {
-        dispatch(setListening(false));
+        dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
       }
     }
     dispatch(setPauseAfterDisconnect(false));
   }, [pauseAfterDisconnect, recognition, startListening]);
 
   const onRecognitionError = useCallback(({ error, message }) => {
-    console.log("Speech recognition error detected: " + error);
-    console.log("Additional information: " + message);
+    dispatch(setStatus(SpeechRecognitionStatus.ERROR));
+    console.error("Speech recognition error detected:", { error, message });
   }, []);
 
   useEffect(() => {
-    if (recognition && !listening) {
+    if (recognition) {
       recognition.continuous = options.continuous !== false;
       recognition.interimResults = options.interimResults;
       recognition.onresult = updateTranscript;
       recognition.onend = onRecognitionDisconnect;
       recognition.onerror = onRecognitionError;
     }
+  }, [
+    onRecognitionDisconnect,
+    onRecognitionError,
+    updateTranscript,
+    recognition,
+    options.continuous,
+    options.interimResults,
+  ]);
 
+  useEffect(() => {
     if (recognition && options && options.autoStart) {
-      recognition.start();
-      dispatch(setListening(true));
+      startListening();
     }
-  }, [listening, onRecognitionDisconnect, onRecognitionError, options, recognition, updateTranscript]);
+
+    return () => {
+      if (status === SpeechRecognitionStatus.STARTED) {
+        stopListening();
+      }
+    };
+  }, [options, recognition, startListening, status, stopListening]);
 
   return {
     transcript,
     interimTranscript,
     finalTranscript,
     status,
-    listening,
     resetTranscript,
     startListening,
     stopListening,

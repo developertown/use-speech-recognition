@@ -1,6 +1,6 @@
 import { reducerWithInitialState } from 'typescript-fsa-reducers';
 import { actionCreatorFactory } from 'typescript-fsa';
-import { useReducer, useCallback, useEffect } from 'react';
+import { useReducer, useMemo, useCallback, useEffect } from 'react';
 
 function _extends() {
   _extends = Object.assign || function (target) {
@@ -28,13 +28,11 @@ var SpeechRecognitionStatus;
   SpeechRecognitionStatus["STARTED"] = "started";
   SpeechRecognitionStatus["ERROR"] = "error";
   SpeechRecognitionStatus["RESET"] = "reset";
-  SpeechRecognitionStatus["ABORTED"] = "aborted";
 })(SpeechRecognitionStatus || (SpeechRecognitionStatus = {}));
 
 var SpeechRecognitionDisconnectType;
 
 (function (SpeechRecognitionDisconnectType) {
-  SpeechRecognitionDisconnectType["ABORT"] = "ABORT";
   SpeechRecognitionDisconnectType["RESET"] = "RESET";
   SpeechRecognitionDisconnectType["STOP"] = "STOP";
 })(SpeechRecognitionDisconnectType || (SpeechRecognitionDisconnectType = {}));
@@ -44,7 +42,6 @@ var setTranscript = /*#__PURE__*/createAction("SET_TRANSCRIPT");
 var setStatus = /*#__PURE__*/createAction("SET_STATUS");
 var setFinalTranscript = /*#__PURE__*/createAction("SET_FINAL_TRANSCRIPT");
 var setInterimTranscript = /*#__PURE__*/createAction("SET_INTERIM_TRANSCRIPT");
-var setListening = /*#__PURE__*/createAction("SET_LISTENING");
 var setPauseAfterDisconnect = /*#__PURE__*/createAction("SET_PAUSE_AFTER_DISCONNECT");
 
 var initialState = {
@@ -52,7 +49,6 @@ var initialState = {
   transcript: "",
   interimTranscript: "",
   finalTranscript: "",
-  listening: false,
   pauseAfterDisconnect: false
 };
 var speechRecognitionReducer = /*#__PURE__*/reducerWithInitialState(initialState)["case"](setTranscript, function (state, transcript) {
@@ -75,11 +71,9 @@ var speechRecognitionReducer = /*#__PURE__*/reducerWithInitialState(initialState
   return _extends(_extends({}, state), {}, {
     status: status
   });
-})["case"](setListening, function (state, listening) {
-  return _extends(_extends({}, state), {}, {
-    listening: listening
-  });
 });
+
+var ERROR_NO_RECOGNITION_SUPPORT = "Speech recognition is not supported on this device";
 
 var defaultOptions = {
   autoStart: false,
@@ -105,11 +99,8 @@ function useSpeechRecognition(options) {
     options = defaultOptions;
   }
 
-  var BrowserSpeechRecognition = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition || window.oSpeechRecognition);
-
   var _useReducer = useReducer(speechRecognitionReducer, initialState),
       _useReducer$ = _useReducer[0],
-      listening = _useReducer$.listening,
       status = _useReducer$.status,
       pauseAfterDisconnect = _useReducer$.pauseAfterDisconnect,
       interimTranscript = _useReducer$.interimTranscript,
@@ -117,16 +108,18 @@ function useSpeechRecognition(options) {
       transcript = _useReducer$.transcript,
       dispatch = _useReducer[1];
 
-  var recognition = BrowserSpeechRecognition ? new BrowserSpeechRecognition() : undefined;
+  var recognition = useMemo(function () {
+    var BrowserSpeechRecognition = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition || window.oSpeechRecognition);
+
+    if (BrowserSpeechRecognition) {
+      return new BrowserSpeechRecognition();
+    } else {
+      throw new Error(ERROR_NO_RECOGNITION_SUPPORT);
+    }
+  }, []);
   var disconnect = useCallback(function (disconnectType) {
     if (recognition) {
       switch (disconnectType) {
-        case SpeechRecognitionDisconnectType.ABORT:
-          dispatch(setStatus(SpeechRecognitionStatus.ABORTED));
-          dispatch(setPauseAfterDisconnect(true));
-          recognition.abort();
-          break;
-
         case SpeechRecognitionDisconnectType.RESET:
           dispatch(setStatus(SpeechRecognitionStatus.RESET));
           dispatch(setPauseAfterDisconnect(false));
@@ -148,28 +141,24 @@ function useSpeechRecognition(options) {
     dispatch(setFinalTranscript(""));
   }, [disconnect]);
   var startListening = useCallback(function () {
-    if (recognition && !listening) {
+    console.log("Running start listening");
+
+    if (recognition && status !== SpeechRecognitionStatus.STARTED) {
       if (!recognition.continuous) {
         resetTranscript();
       }
 
       try {
         recognition.start();
+        dispatch(setStatus(SpeechRecognitionStatus.STARTED));
       } catch (DOMException) {// Tried to start recognition after it has already started - safe to swallow this error
       }
-
-      dispatch(setStatus(SpeechRecognitionStatus.STARTED));
-      dispatch(setListening(true));
     }
-  }, [listening, recognition, resetTranscript]);
+  }, [status, recognition, resetTranscript]);
   var stopListening = useCallback(function () {
+    console.log("Running stop listening");
     disconnect(SpeechRecognitionDisconnectType.STOP);
     dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
-    dispatch(setListening(false));
-  }, [disconnect]);
-  var abortListening = useCallback(function () {
-    dispatch(setListening(false));
-    disconnect(SpeechRecognitionDisconnectType.ABORT);
   }, [disconnect]);
   var updateTranscript = useCallback(function (event) {
     console.log("updating transcript", event);
@@ -196,12 +185,12 @@ function useSpeechRecognition(options) {
     dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
 
     if (pauseAfterDisconnect) {
-      dispatch(setListening(false));
+      dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
     } else if (recognition) {
       if (recognition.continuous) {
         startListening();
       } else {
-        dispatch(setListening(false));
+        dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
       }
     }
 
@@ -214,30 +203,33 @@ function useSpeechRecognition(options) {
     console.log("Additional information: " + message);
   }, []);
   useEffect(function () {
-    if (recognition && !listening) {
+    if (recognition) {
       recognition.continuous = options.continuous !== false;
       recognition.interimResults = options.interimResults;
       recognition.onresult = updateTranscript;
       recognition.onend = onRecognitionDisconnect;
       recognition.onerror = onRecognitionError;
     }
-
+  }, [onRecognitionDisconnect, onRecognitionError, updateTranscript, recognition, options.continuous, options.interimResults]);
+  useEffect(function () {
     if (recognition && options && options.autoStart) {
-      recognition.start();
-      dispatch(setListening(true));
+      startListening();
     }
-  }, [listening, onRecognitionDisconnect, onRecognitionError, options, recognition, updateTranscript]);
+
+    return function () {
+      if (options && options.autoStart && status === SpeechRecognitionStatus.STARTED) {
+        stopListening();
+      }
+    };
+  }, [options, recognition, startListening, status, stopListening]);
   return {
     transcript: transcript,
     interimTranscript: interimTranscript,
     finalTranscript: finalTranscript,
     status: status,
-    listening: listening,
-    recognition: recognition,
     resetTranscript: resetTranscript,
     startListening: startListening,
-    stopListening: stopListening,
-    abortListening: abortListening
+    stopListening: stopListening
   };
 }
 

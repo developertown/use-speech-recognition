@@ -1,9 +1,13 @@
-export interface SpeechRecognitionUtils {
-  transcript: string; // Transcription of all speech that has been spoken into the microphone. Is equivalent to the final transcript followed by the interim transcript, separated by a space.
-  interimTranscript: string; // Current word guesses before adding to transcript
-  finalTranscript: string; // Completed transcript
-  listening: boolean; // API is currently listening via microphone
-  status: SpeechRecognitionStatus;
+declare global {
+  interface Window {
+    webkitSpeechRecognition: unknown;
+    mozSpeechRecognition: unknown;
+    msSpeechRecognition: unknown;
+    oSpeechRecognition: unknown;
+  }
+}
+
+export interface SpeechRecognitionUtils extends SpeechRecognitionState {
   resetTranscript: () => void;
   startListening: () => void;
   stopListening: () => void;
@@ -14,7 +18,9 @@ export interface SpeechRecognitionState {
   transcript: string; // Transcription of all speech that has been spoken into the microphone. Is equivalent to the final transcript followed by the interim transcript, separated by a space.
   interimTranscript: string; // Current word guesses before adding to transcript
   finalTranscript: string; // Completed transcript
-  listening: boolean; // API is currently listening via microphone
+}
+
+export interface SpeechRecognitionInternalState extends SpeechRecognitionState {
   pauseAfterDisconnect: boolean;
 }
 
