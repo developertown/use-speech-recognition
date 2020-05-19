@@ -7,12 +7,10 @@ import {
   setStatus,
   setError,
   setPauseAfterDisconnect,
-  setTranscriptArray,
 } from "./actions";
 
 export const initialState: SpeechRecognitionInternalState = {
   status: SpeechRecognitionStatus.READY,
-  transcriptArray: [],
   transcript: "",
   interimTranscript: "",
   finalTranscript: "",
@@ -24,10 +22,6 @@ export const speechRecognitionReducer = reducerWithInitialState(initialState)
   .case(setTranscript, (state, transcript) => ({
     ...state,
     transcript,
-  }))
-  .case(setTranscriptArray, (state, transcriptArray) => ({
-    ...state,
-    transcriptArray,
   }))
   .case(setPauseAfterDisconnect, (state, pauseAfterDisconnect) => ({
     ...state,
