@@ -5,7 +5,6 @@ import {
   SpeechRecognitionUtils,
   SpeechRecognitionDisconnectType,
   SpeechRecognitionStatus,
-  SpeechRecognitionErrorEvent,
 } from "./types";
 
 import {
