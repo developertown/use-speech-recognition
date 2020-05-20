@@ -35,12 +35,14 @@
     "@material-ui/core": "^4.9.14",
     "@storybook/react": "^5.3.18",
     "@testing-library/react-hooks": "^3.2.1",
+    "@types/classnames": "^2.2.10",
     "@types/jest": "^25.1.4",
     "@types/react": "^16.9.35",
     "@typescript-eslint/eslint-plugin": "^2.24.0",
     "@typescript-eslint/parser": "^2.24.0",
     "babel-eslint": "^10.1.0",
     "babel-loader": "^8.1.0",
+    "classnames": "^2.2.6",
     "eslint": "^6.8.0",
     "eslint-config-prettier": "^6.10.0",
     "eslint-config-react-app": "^5.2.0",
@@ -54,6 +56,7 @@
     "husky": "^4.2.5",
     "react": "^16.13.1",
     "react-docgen-typescript-loader": "^3.7.2",
+    "react-scripts": "^3.4.1",
     "react-dom": "^16.13.1",
     "react-test-renderer": "^16.13.1",
     "ts-loader": "^7.0.4",
@@ -63,7 +66,5 @@
     "typescript-fsa-reducers": "^1.2.1"
   },
   "dependencies": {
-    "@types/classnames": "^2.2.10",
-    "classnames": "^2.2.6"
   }
 }
