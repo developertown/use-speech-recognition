@@ -10,6 +10,7 @@ import {
   setTranscripts,
   setErrorMessage,
   disconnect,
+  disconnectAndReset,
   reset,
   pause,
 } from "./actions";
@@ -38,12 +39,18 @@ export const speechRecognitionReducer = reducerWithInitialState(initialState)
   }))
   .case(disconnect, (state, status) => ({
     ...state,
-    status,
+    status: SpeechRecognitionStatus.STOPPED,
+    error: undefined,
+    pauseAfterRecognitionEnd: true,
+  }))
+  .case(disconnectAndReset, (state) => ({
+    ...state,
+    status: SpeechRecognitionStatus.RESET,
     transcript: "",
     finalTranscript: "",
     interimTranscript: "",
     error: undefined,
-    pauseAfterRecognitionEnd: status === SpeechRecognitionStatus.RESET ? false : true,
+    pauseAfterRecognitionEnd: false,
   }))
   .case(setTranscript, (state, transcript) => ({
     ...state,

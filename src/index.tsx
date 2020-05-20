@@ -8,7 +8,14 @@ import {
   SpeechRecognitionInternalState,
 } from "./types";
 
-import { setTranscripts, setStatus, disconnect as disconnectAction, setErrorMessage, pause } from "./actions";
+import {
+  setTranscripts,
+  setStatus,
+  disconnect as disconnectAction,
+  setErrorMessage,
+  pause,
+  disconnectAndReset,
+} from "./actions";
 import { ERROR_NO_RECOGNITION_SUPPORT } from "./constants";
 import { ReducerBuilder } from "typescript-fsa-reducers";
 
@@ -56,12 +63,12 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
         switch (disconnectType) {
           case SpeechRecognitionDisconnectType.RESET:
             recognition.abort();
-            dispatch(disconnectAction(SpeechRecognitionStatus.RESET));
+            dispatch(disconnectAndReset());
             break;
           case SpeechRecognitionDisconnectType.STOP:
           default:
             recognition.stop();
-            dispatch(disconnectAction(SpeechRecognitionStatus.STOPPED));
+            dispatch(disconnectAction());
         }
       }
     },

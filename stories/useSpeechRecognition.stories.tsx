@@ -1,5 +1,5 @@
 import * as React from "react";
-import { SpeechDisplay } from "../example/speech-display";
+import { SpeechDisplay } from "../src/examples/speech-display";
 
 export default {
   title: "displaySpokenWords",

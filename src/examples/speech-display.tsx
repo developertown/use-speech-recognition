@@ -1,8 +1,8 @@
 import * as React from "react";
 import { PropsWithChildren } from "react";
 import cn from "classnames";
-import { useSpeechRecognition } from "../src";
-import { SpeechRecognitionStatus } from "../src/types";
+import { useSpeechRecognition } from "..";
+import { SpeechRecognitionStatus } from "../types";
 
 const Grid: React.FC<PropsWithChildren<{}>> = ({ children }) => (
   <div style={{ display: "grid", gridTemplateColumns: "100%", gridRowGap: "1rem", gridColumnGap: "1rem" }}>
@@ -35,14 +35,14 @@ export const SpeechDisplay: React.FC<{}> = () => {
     width: "30rem",
     padding: "1rem",
     margin: ".25rem 0 .5rem",
-    "border-radius": "3px",
-    "min-height": "56px",
-    "justify-content": "center",
-    "align-items": "center",
-    "background-color": "#eee",
-    "text-align": "center",
-    "font-weight": "bold",
-    "font-size": "1rem",
+    borderRadius: "3px",
+    minHeight: "56px",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#eee",
+    textAlign: "center",
+    fontWeight: "bold",
+    fontSize: "1rem",
   };
 
   return (
