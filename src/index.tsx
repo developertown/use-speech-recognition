@@ -9,11 +9,12 @@ import {
 } from "./types";
 
 import {
-  setPauseAfterDisconnect,
+  setPauseAfterRecognitionEnd,
   setTranscripts,
   setStatus,
   disconnect as disconnectAction,
   setErrorMessage,
+  pause,
 } from "./actions";
 import { ERROR_NO_RECOGNITION_SUPPORT } from "./constants";
 import { ReducerBuilder } from "typescript-fsa-reducers";
@@ -36,7 +37,7 @@ function concatTranscripts(...parts: string[]) {
 
 export function useSpeechRecognition(options: SpeechRecognitionOptions = defaultOptions): SpeechRecognitionUtils {
   const [
-    { error, status, pauseAfterDisconnect, interimTranscript, finalTranscript, transcript },
+    { error, status, pauseAfterRecognitionEnd, interimTranscript, finalTranscript, transcript },
     dispatch,
   ] = useReducer<ReducerBuilder<SpeechRecognitionInternalState>>(speechRecognitionReducer, initialState);
 
@@ -124,18 +125,17 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
     [options],
   );
 
-  const onRecognitionDisconnect = useCallback(() => {
-    if (pauseAfterDisconnect) {
-      dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
+  const onRecognitionEnd = useCallback(() => {
+    if (pauseAfterRecognitionEnd) {
+      dispatch(pause());
     } else if (recognition) {
       if (recognition.continuous) {
         startListening();
       } else {
-        dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
+        stopListening();
       }
     }
-    dispatch(setPauseAfterDisconnect(false));
-  }, [pauseAfterDisconnect, recognition, startListening]);
+  }, [pauseAfterRecognitionEnd, recognition, startListening, stopListening]);
 
   const onRecognitionError = useCallback(({ error, message }) => {
     dispatch(setErrorMessage(`${error}: ${message}`));
@@ -146,17 +146,10 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
       recognition.continuous = options.continuous !== false;
       recognition.interimResults = options.interimResults;
       recognition.onresult = updateTranscript;
-      recognition.onend = onRecognitionDisconnect;
+      recognition.onend = onRecognitionEnd;
       recognition.onerror = onRecognitionError;
     }
-  }, [
-    onRecognitionDisconnect,
-    onRecognitionError,
-    updateTranscript,
-    recognition,
-    options.continuous,
-    options.interimResults,
-  ]);
+  }, [onRecognitionEnd, onRecognitionError, updateTranscript, recognition, options.continuous, options.interimResults]);
 
   useEffect(() => {
     if (options?.autoStart) {

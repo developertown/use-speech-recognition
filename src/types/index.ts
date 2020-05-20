@@ -36,7 +36,7 @@ export interface SpeechRecognitionState {
 }
 
 export interface SpeechRecognitionInternalState extends SpeechRecognitionState {
-  pauseAfterDisconnect: boolean;
+  pauseAfterRecognitionEnd: boolean;
 }
 
 export enum SpeechRecognitionStatus {

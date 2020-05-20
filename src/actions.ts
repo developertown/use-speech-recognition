@@ -4,6 +4,7 @@ import { Transcript, SpeechRecognitionStatus, SpeechRecognitionErrorMessage, Set
 const createAction = actionCreatorFactory("SPEECH_RECOGNITION");
 
 export const reset = createAction("RESET");
+export const pause = createAction("PAUSE");
 export const disconnect = createAction<SpeechRecognitionStatus>("DISCONNECT");
 export const setStatus = createAction<SpeechRecognitionStatus>("SET_STATUS");
 export const setError = createAction<SpeechRecognitionErrorMessage | undefined>("SET_ERROR");
@@ -12,4 +13,4 @@ export const setTranscripts = createAction<SetTranscriptsPayload>("SET_TRANSCRIP
 export const setTranscript = createAction<Transcript>("SET_TRANSCRIPT");
 export const setFinalTranscript = createAction<Transcript>("SET_FINAL_TRANSCRIPT");
 export const setInterimTranscript = createAction<Transcript>("SET_INTERIM_TRANSCRIPT");
-export const setPauseAfterDisconnect = createAction<boolean>("SET_PAUSE_AFTER_DISCONNECT");
+export const setPauseAfterRecognitionEnd = createAction<boolean>("SET_PAUSE_AFTER_DISCONNECT");
