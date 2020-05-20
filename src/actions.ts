@@ -8,7 +8,6 @@ export const disconnect = createAction<SpeechRecognitionStatus>("DISCONNECT");
 export const setStatus = createAction<SpeechRecognitionStatus>("SET_STATUS");
 export const setError = createAction<SpeechRecognitionErrorMessage | undefined>("SET_ERROR");
 export const setErrorMessage = createAction<SpeechRecognitionErrorMessage>("SET_ERROR_MESSAGE");
-// export const clearErrorMessage = createAction("CLEAR_ERROR_MESSAGE");
 export const setTranscripts = createAction<SetTranscriptsPayload>("SET_TRANSCRIPTS");
 export const setTranscript = createAction<Transcript>("SET_TRANSCRIPT");
 export const setFinalTranscript = createAction<Transcript>("SET_FINAL_TRANSCRIPT");

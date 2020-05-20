@@ -67,7 +67,6 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
           case SpeechRecognitionDisconnectType.STOP:
           default:
             recognition.stop();
-            // dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
             dispatch(disconnectAction(SpeechRecognitionStatus.STOPPED));
         }
       }
