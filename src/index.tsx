@@ -50,13 +50,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
         window.oSpeechRecognition);
 
     if (BrowserSpeechRecognition) {
-      const rec = new BrowserSpeechRecognition();
-      rec.continuous = options.continuous !== false;
-      rec.interimResults = options.interimResults;
-      rec.onresult = updateTranscript;
-      rec.onend = onRecognitionDisconnect;
-      rec.onerror = onRecognitionError;
-      return rec;
+      return new BrowserSpeechRecognition();
     } else {
       throw new Error(ERROR_NO_RECOGNITION_SUPPORT);
     }
@@ -175,7 +169,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
         stopListening();
       }
     };
-  }, [status, options.autoStart]);
+  }, [status, options.autoStart, options, startListening, stopListening]);
 
   return {
     error,
