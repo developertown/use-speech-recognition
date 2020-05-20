@@ -7,6 +7,10 @@ import {
   setStatus,
   setError,
   setPauseAfterDisconnect,
+  setTranscripts,
+  disconnect,
+  reset,
+  setErrorMessage,
 } from "./actions";
 
 export const initialState: SpeechRecognitionInternalState = {
@@ -19,9 +23,31 @@ export const initialState: SpeechRecognitionInternalState = {
 };
 
 export const speechRecognitionReducer = reducerWithInitialState(initialState)
+  .case(reset, (state) => ({
+    ...state,
+    transcript: "",
+    finalTranscript: "",
+    interimTranscript: "",
+    error: undefined,
+  }))
+  .case(disconnect, (state, status) => ({
+    ...state,
+    status,
+    transcript: "",
+    finalTranscript: "",
+    interimTranscript: "",
+    error: undefined,
+    pauseAfterDisconnect: status === SpeechRecognitionStatus.RESET ? false : true,
+  }))
   .case(setTranscript, (state, transcript) => ({
     ...state,
     transcript,
+  }))
+  .case(setTranscripts, (state, { transcript, finalTranscript, interimTranscript }) => ({
+    ...state,
+    transcript,
+    finalTranscript,
+    interimTranscript,
   }))
   .case(setPauseAfterDisconnect, (state, pauseAfterDisconnect) => ({
     ...state,
@@ -38,6 +64,11 @@ export const speechRecognitionReducer = reducerWithInitialState(initialState)
   .case(setError, (state, error) => ({
     ...state,
     error,
+  }))
+  .case(setErrorMessage, (state, error) => ({
+    ...state,
+    error,
+    status: SpeechRecognitionStatus.ERROR,
   }))
   .case(setStatus, (state, status) => ({
     ...state,

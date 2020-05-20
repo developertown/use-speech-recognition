@@ -5,17 +5,18 @@ import {
   SpeechRecognitionUtils,
   SpeechRecognitionDisconnectType,
   SpeechRecognitionStatus,
+  SpeechRecognitionInternalState,
 } from "./types";
 
 import {
   setPauseAfterDisconnect,
-  setInterimTranscript,
-  setFinalTranscript,
-  setTranscript,
+  setTranscripts,
   setStatus,
-  setError,
+  disconnect as disconnectAction,
+  setErrorMessage,
 } from "./actions";
 import { ERROR_NO_RECOGNITION_SUPPORT } from "./constants";
+import { ReducerBuilder } from "typescript-fsa-reducers";
 
 export const defaultOptions: SpeechRecognitionOptions = {
   autoStart: false,
@@ -37,7 +38,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
   const [
     { error, status, pauseAfterDisconnect, interimTranscript, finalTranscript, transcript },
     dispatch,
-  ] = useReducer(speechRecognitionReducer, initialState);
+  ] = useReducer<ReducerBuilder<SpeechRecognitionInternalState>>(speechRecognitionReducer, initialState);
 
   const recognition = useMemo(() => {
     const BrowserSpeechRecognition =
@@ -49,7 +50,13 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
         window.oSpeechRecognition);
 
     if (BrowserSpeechRecognition) {
-      return new BrowserSpeechRecognition();
+      const rec = new BrowserSpeechRecognition();
+      rec.continuous = options.continuous !== false;
+      rec.interimResults = options.interimResults;
+      rec.onresult = updateTranscript;
+      rec.onend = onRecognitionDisconnect;
+      rec.onerror = onRecognitionError;
+      return rec;
     } else {
       throw new Error(ERROR_NO_RECOGNITION_SUPPORT);
     }
@@ -60,15 +67,14 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
       if (recognition) {
         switch (disconnectType) {
           case SpeechRecognitionDisconnectType.RESET:
-            dispatch(setStatus(SpeechRecognitionStatus.RESET));
-            dispatch(setPauseAfterDisconnect(false));
             recognition.abort();
+            dispatch(disconnectAction(SpeechRecognitionStatus.RESET));
             break;
           case SpeechRecognitionDisconnectType.STOP:
           default:
-            dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
-            dispatch(setPauseAfterDisconnect(true));
             recognition.stop();
+            // dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
+            dispatch(disconnectAction(SpeechRecognitionStatus.STOPPED));
         }
       }
     },
@@ -77,14 +83,10 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
 
   const resetTranscript = useCallback(() => {
     disconnect(SpeechRecognitionDisconnectType.RESET);
-    dispatch(setError(undefined));
-    dispatch(setTranscript(""));
-    dispatch(setInterimTranscript(""));
-    dispatch(setFinalTranscript(""));
   }, [disconnect]);
 
   const startListening = useCallback(() => {
-    if (recognition && status !== SpeechRecognitionStatus.STARTED) {
+    if (status !== SpeechRecognitionStatus.STARTED) {
       if (!recognition.continuous) {
         resetTranscript();
       }
@@ -100,7 +102,6 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
 
   const stopListening = useCallback(() => {
     disconnect(SpeechRecognitionDisconnectType.STOP);
-    dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
   }, [disconnect]);
 
   const updateTranscript = useCallback(
@@ -115,9 +116,13 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
         }
       }
 
-      dispatch(setTranscript(concatTranscripts(final, interim)));
-      dispatch(setInterimTranscript(interim));
-      dispatch(setFinalTranscript(final));
+      dispatch(
+        setTranscripts({
+          transcript: concatTranscripts(final, interim),
+          interimTranscript: interim,
+          finalTranscript: final,
+        }),
+      );
 
       if (options.onResult) {
         options.onResult(final, interim);
@@ -140,8 +145,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
   }, [pauseAfterDisconnect, recognition, startListening]);
 
   const onRecognitionError = useCallback(({ error, message }) => {
-    dispatch(setStatus(SpeechRecognitionStatus.ERROR));
-    dispatch(setError(`${error}: ${message}`));
+    dispatch(setErrorMessage(`${error}: ${message}`));
   }, []);
 
   useEffect(() => {
@@ -162,7 +166,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
   ]);
 
   useEffect(() => {
-    if (recognition && options && options.autoStart) {
+    if (options?.autoStart) {
       startListening();
     }
 
@@ -171,7 +175,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
         stopListening();
       }
     };
-  }, [options, recognition, startListening, status, stopListening]);
+  }, [status, options.autoStart]);
 
   return {
     error,

@@ -7,6 +7,12 @@ declare global {
   }
 }
 
+export interface SetTranscriptsPayload {
+  transcript: Transcript;
+  finalTranscript: Transcript;
+  interimTranscript: Transcript;
+}
+
 export type SpeechRecognitionErrorMessage = string;
 export type SpeechRecognitionErrorType = string;
 
