@@ -8,14 +8,7 @@ import {
   SpeechRecognitionInternalState,
 } from "./types";
 
-import {
-  setPauseAfterRecognitionEnd,
-  setTranscripts,
-  setStatus,
-  disconnect as disconnectAction,
-  setErrorMessage,
-  pause,
-} from "./actions";
+import { setTranscripts, setStatus, disconnect as disconnectAction, setErrorMessage, pause } from "./actions";
 import { ERROR_NO_RECOGNITION_SUPPORT } from "./constants";
 import { ReducerBuilder } from "typescript-fsa-reducers";
 
