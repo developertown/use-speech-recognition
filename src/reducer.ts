@@ -1,47 +1,58 @@
 import { reducerWithInitialState } from "typescript-fsa-reducers";
-import { SpeechRecognitionState, SpeechRecognitionStatus } from "./types";
-import {
-  setInterimTranscript,
-  setTranscript,
-  setFinalTranscript,
-  setListening,
-  setStatus,
-  setPauseAfterDisconnect,
-} from "./actions";
+import { SpeechRecognitionInternalState, SpeechRecognitionStatus } from "./types";
+import { setStatus, setTranscripts, setErrorMessage, disconnect, disconnectAndReset, reset, pause } from "./actions";
 
-export const initialState: SpeechRecognitionState = {
+export const initialState: SpeechRecognitionInternalState = {
   status: SpeechRecognitionStatus.READY,
   transcript: "",
   interimTranscript: "",
   finalTranscript: "",
-  listening: false,
-  pauseAfterDisconnect: false,
+  pauseAfterRecognitionEnd: false,
+  error: undefined,
 };
 
 export const speechRecognitionReducer = reducerWithInitialState(initialState)
-  .case(setTranscript, (state, transcript) => ({
+  .case(reset, (state) => ({
+    ...state,
+    transcript: "",
+    finalTranscript: "",
+    interimTranscript: "",
+    error: undefined,
+  }))
+  .case(pause, (state) => ({
+    ...state,
+    status: SpeechRecognitionStatus.STOPPED,
+    pauseAfterRecognitionEnd: false,
+  }))
+  .case(disconnect, (state, status) => ({
+    ...state,
+    status: SpeechRecognitionStatus.STOPPED,
+    error: undefined,
+    pauseAfterRecognitionEnd: true,
+  }))
+  .case(disconnectAndReset, (state) => ({
+    ...state,
+    status: SpeechRecognitionStatus.RESET,
+    transcript: "",
+    finalTranscript: "",
+    interimTranscript: "",
+    error: undefined,
+    pauseAfterRecognitionEnd: false,
+  }))
+  .case(setTranscripts, (state, { transcript, finalTranscript, interimTranscript }) => ({
     ...state,
     transcript,
-  }))
-  .case(setPauseAfterDisconnect, (state, pauseAfterDisconnect) => ({
-    ...state,
-    pauseAfterDisconnect,
-  }))
-  .case(setInterimTranscript, (state, interimTranscript) => ({
-    ...state,
+    finalTranscript,
     interimTranscript,
   }))
-  .case(setFinalTranscript, (state, finalTranscript) => ({
+  .case(setErrorMessage, (state, error) => ({
     ...state,
-    finalTranscript,
+    error,
+    status: SpeechRecognitionStatus.ERROR,
   }))
   .case(setStatus, (state, status) => ({
     ...state,
     status,
-  }))
-  .case(setListening, (state, listening) => ({
-    ...state,
-    listening,
   }));
 
 export default speechRecognitionReducer;

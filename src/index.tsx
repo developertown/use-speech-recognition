@@ -1,29 +1,23 @@
 import { speechRecognitionReducer, initialState } from "./reducer";
-import { useEffect, useCallback, useReducer } from "react";
+import { useEffect, useCallback, useReducer, useMemo } from "react";
 import {
   SpeechRecognitionOptions,
   SpeechRecognitionUtils,
   SpeechRecognitionDisconnectType,
   SpeechRecognitionStatus,
+  SpeechRecognitionInternalState,
 } from "./types";
 
 import {
-  setListening,
-  setPauseAfterDisconnect,
-  setInterimTranscript,
-  setFinalTranscript,
-  setTranscript,
+  setTranscripts,
   setStatus,
+  disconnect as disconnectAction,
+  setErrorMessage,
+  pause,
+  disconnectAndReset,
 } from "./actions";
-
-declare global {
-  interface Window {
-    webkitSpeechRecognition: unknown;
-    mozSpeechRecognition: unknown;
-    msSpeechRecognition: unknown;
-    oSpeechRecognition: unknown;
-  }
-}
+import { ERROR_NO_RECOGNITION_SUPPORT } from "./constants";
+import { ReducerBuilder } from "typescript-fsa-reducers";
 
 export const defaultOptions: SpeechRecognitionOptions = {
   autoStart: false,
@@ -42,35 +36,39 @@ function concatTranscripts(...parts: string[]) {
 }
 
 export function useSpeechRecognition(options: SpeechRecognitionOptions = defaultOptions): SpeechRecognitionUtils {
-  const BrowserSpeechRecognition =
-    typeof window !== "undefined" &&
-    (window.SpeechRecognition ||
-      window.webkitSpeechRecognition ||
-      window.mozSpeechRecognition ||
-      window.msSpeechRecognition ||
-      window.oSpeechRecognition);
-
   const [
-    { listening, status, pauseAfterDisconnect, interimTranscript, finalTranscript, transcript },
+    { error, status, pauseAfterRecognitionEnd, interimTranscript, finalTranscript, transcript },
     dispatch,
-  ] = useReducer(speechRecognitionReducer, initialState);
+  ] = useReducer<ReducerBuilder<SpeechRecognitionInternalState>>(speechRecognitionReducer, initialState);
 
-  const recognition = BrowserSpeechRecognition ? new BrowserSpeechRecognition() : undefined;
+  const recognition = useMemo(() => {
+    const BrowserSpeechRecognition =
+      typeof window !== "undefined" &&
+      (window.SpeechRecognition ||
+        window.webkitSpeechRecognition ||
+        window.mozSpeechRecognition ||
+        window.msSpeechRecognition ||
+        window.oSpeechRecognition);
+
+    if (BrowserSpeechRecognition) {
+      return new BrowserSpeechRecognition();
+    } else {
+      throw new Error(ERROR_NO_RECOGNITION_SUPPORT);
+    }
+  }, []);
 
   const disconnect = useCallback(
     (disconnectType: SpeechRecognitionDisconnectType) => {
       if (recognition) {
         switch (disconnectType) {
           case SpeechRecognitionDisconnectType.RESET:
-            dispatch(setStatus(SpeechRecognitionStatus.RESET));
-            dispatch(setPauseAfterDisconnect(false));
             recognition.abort();
+            dispatch(disconnectAndReset());
             break;
           case SpeechRecognitionDisconnectType.STOP:
           default:
-            dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
-            dispatch(setPauseAfterDisconnect(true));
             recognition.stop();
+            dispatch(disconnectAction());
         }
       }
     },
@@ -79,35 +77,29 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
 
   const resetTranscript = useCallback(() => {
     disconnect(SpeechRecognitionDisconnectType.RESET);
-    dispatch(setTranscript(""));
-    dispatch(setInterimTranscript(""));
-    dispatch(setFinalTranscript(""));
   }, [disconnect]);
 
   const startListening = useCallback(() => {
-    if (recognition && !listening) {
+    if (status !== SpeechRecognitionStatus.STARTED) {
       if (!recognition.continuous) {
         resetTranscript();
       }
+
       try {
         recognition.start();
+        dispatch(setStatus(SpeechRecognitionStatus.STARTED));
       } catch (DOMException) {
         // Tried to start recognition after it has already started - safe to swallow this error
       }
-      dispatch(setStatus(SpeechRecognitionStatus.STARTED));
-      dispatch(setListening(true));
     }
-  }, [listening, recognition, resetTranscript]);
+  }, [status, recognition, resetTranscript]);
 
   const stopListening = useCallback(() => {
     disconnect(SpeechRecognitionDisconnectType.STOP);
-    dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
-    dispatch(setListening(false));
   }, [disconnect]);
 
   const updateTranscript = useCallback(
     (event: SpeechRecognitionEvent) => {
-      console.log("updating transcript", event);
       let interim = "";
       let final = "";
       for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -117,9 +109,14 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
           interim = concatTranscripts(interim, event.results[i][0].transcript);
         }
       }
-      dispatch(setTranscript(concatTranscripts(final, interim)));
-      dispatch(setInterimTranscript(interim));
-      dispatch(setFinalTranscript(final));
+
+      dispatch(
+        setTranscripts({
+          transcript: concatTranscripts(final, interim),
+          interimTranscript: interim,
+          finalTranscript: final,
+        }),
+      );
 
       if (options.onResult) {
         options.onResult(final, interim);
@@ -128,46 +125,50 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
     [options],
   );
 
-  const onRecognitionDisconnect = useCallback(() => {
-    dispatch(setStatus(SpeechRecognitionStatus.STOPPED));
-    if (pauseAfterDisconnect) {
-      dispatch(setListening(false));
+  const onRecognitionEnd = useCallback(() => {
+    if (pauseAfterRecognitionEnd) {
+      dispatch(pause());
     } else if (recognition) {
       if (recognition.continuous) {
         startListening();
       } else {
-        dispatch(setListening(false));
+        stopListening();
       }
     }
-    dispatch(setPauseAfterDisconnect(false));
-  }, [pauseAfterDisconnect, recognition, startListening]);
+  }, [pauseAfterRecognitionEnd, recognition, startListening, stopListening]);
 
   const onRecognitionError = useCallback(({ error, message }) => {
-    console.log("Speech recognition error detected: " + error);
-    console.log("Additional information: " + message);
+    dispatch(setErrorMessage(`${error}: ${message}`));
   }, []);
 
   useEffect(() => {
-    if (recognition && !listening) {
+    if (recognition) {
       recognition.continuous = options.continuous !== false;
       recognition.interimResults = options.interimResults;
       recognition.onresult = updateTranscript;
-      recognition.onend = onRecognitionDisconnect;
+      recognition.onend = onRecognitionEnd;
       recognition.onerror = onRecognitionError;
     }
+  }, [onRecognitionEnd, onRecognitionError, updateTranscript, recognition, options.continuous, options.interimResults]);
 
-    if (recognition && options && options.autoStart) {
-      recognition.start();
-      dispatch(setListening(true));
+  useEffect(() => {
+    if (options?.autoStart) {
+      startListening();
     }
-  }, [listening, onRecognitionDisconnect, onRecognitionError, options, recognition, updateTranscript]);
+
+    return () => {
+      if (status === SpeechRecognitionStatus.STARTED) {
+        stopListening();
+      }
+    };
+  }, [status, options.autoStart, options, startListening, stopListening]);
 
   return {
+    error,
     transcript,
     interimTranscript,
     finalTranscript,
     status,
-    listening,
     resetTranscript,
     startListening,
     stopListening,
