@@ -35,11 +35,21 @@ function concatTranscripts(...parts: string[]) {
     .trim();
 }
 
-export function useSpeechRecognition(options: SpeechRecognitionOptions = defaultOptions): SpeechRecognitionUtils {
+export function useSpeechRecognition(
+  userOptions: Partial<SpeechRecognitionOptions> = defaultOptions,
+): SpeechRecognitionUtils {
   const [
     { error, status, pauseAfterRecognitionEnd, interimTranscript, finalTranscript, transcript },
     dispatch,
   ] = useReducer<ReducerBuilder<SpeechRecognitionInternalState>>(speechRecognitionReducer, initialState);
+
+  const options = useMemo(
+    () => ({
+      ...defaultOptions,
+      ...userOptions,
+    }),
+    [userOptions],
+  );
 
   const recognition = useMemo(() => {
     const BrowserSpeechRecognition =
@@ -95,6 +105,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
   }, [status, recognition, resetTranscript]);
 
   const stopListening = useCallback(() => {
+    options.onEnd && options.onEnd();
     disconnect(SpeechRecognitionDisconnectType.STOP);
   }, [disconnect]);
 
@@ -119,7 +130,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
       );
 
       if (options.onResult) {
-        options.onResult(final, interim);
+        options.onResult(final, interim, event);
       }
     },
     [options],
@@ -129,7 +140,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
     if (pauseAfterRecognitionEnd) {
       dispatch(pause());
     } else if (recognition) {
-      if (recognition.continuous) {
+      if (recognition.continuous && status !== SpeechRecognitionStatus.STARTED) {
         startListening();
       } else {
         stopListening();
@@ -148,6 +159,11 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
       recognition.onresult = updateTranscript;
       recognition.onend = onRecognitionEnd;
       recognition.onerror = onRecognitionError;
+      recognition.onstart = options.onStart;
+      recognition.onaudioend = (e) => {
+        options.onAudioEnd && options.onAudioEnd(e);
+        onRecognitionEnd();
+      };
     }
   }, [onRecognitionEnd, onRecognitionError, updateTranscript, recognition, options.continuous, options.interimResults]);
 
@@ -157,7 +173,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = default
     }
 
     return () => {
-      if (status === SpeechRecognitionStatus.STARTED) {
+      if (status === SpeechRecognitionStatus.STARTED && !options.continuous) {
         stopListening();
       }
     };
