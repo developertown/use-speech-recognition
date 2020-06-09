@@ -35,9 +35,7 @@ function concatTranscripts(...parts: string[]) {
     .trim();
 }
 
-export function useSpeechRecognition(
-  userOptions: Partial<SpeechRecognitionOptions> = defaultOptions,
-): SpeechRecognitionUtils {
+export function useSpeechRecognition(userOptions: Partial<SpeechRecognitionOptions> = {}): SpeechRecognitionUtils {
   const [
     { error, status, pauseAfterRecognitionEnd, interimTranscript, finalTranscript, transcript },
     dispatch,
