@@ -155,7 +155,7 @@ export function useSpeechRecognition(userOptions: Partial<SpeechRecognitionOptio
     if (options.autoStart) {
       startListening();
     }
-  }, [options.autoStart, startListening]);
+  }, [options.autoStart]);
 
   return {
     error,
