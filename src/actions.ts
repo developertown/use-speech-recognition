@@ -4,7 +4,6 @@ import { SpeechRecognitionStatus, SpeechRecognitionErrorMessage, SetTranscriptsP
 const createAction = actionCreatorFactory("SPEECH_RECOGNITION");
 
 export const reset = createAction("RESET");
-export const pause = createAction("PAUSE");
 export const disconnect = createAction("DISCONNECT");
 export const disconnectAndReset = createAction("DISCONNECT_AND_RESET");
 export const setStatus = createAction<SpeechRecognitionStatus>("SET_STATUS");
