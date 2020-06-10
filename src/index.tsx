@@ -149,7 +149,7 @@ export function useSpeechRecognition(userOptions: Partial<SpeechRecognitionOptio
         stopListening();
       };
     }
-  }, [onRecognitionError, updateTranscript, recognition, options.continuous, options.interimResults]);
+  }, [onRecognitionError, updateTranscript, recognition, options, stopListening]);
 
   useEffect(() => {
     if (options.autoStart) {
