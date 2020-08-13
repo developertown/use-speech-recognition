@@ -1,13 +1,12 @@
 import { reducerWithInitialState } from "typescript-fsa-reducers";
-import { SpeechRecognitionInternalState, SpeechRecognitionStatus } from "./types";
-import { setStatus, setTranscripts, setErrorMessage, disconnect, disconnectAndReset, reset, pause } from "./actions";
+import { SpeechRecognitionStatus, SpeechRecognitionState } from "./types";
+import { setStatus, setTranscripts, setErrorMessage, disconnect, disconnectAndReset, reset } from "./actions";
 
-export const initialState: SpeechRecognitionInternalState = {
+export const initialState: SpeechRecognitionState = {
   status: SpeechRecognitionStatus.READY,
   transcript: "",
   interimTranscript: "",
   finalTranscript: "",
-  pauseAfterRecognitionEnd: false,
   error: undefined,
 };
 
@@ -19,16 +18,10 @@ export const speechRecognitionReducer = reducerWithInitialState(initialState)
     interimTranscript: "",
     error: undefined,
   }))
-  .case(pause, (state) => ({
-    ...state,
-    status: SpeechRecognitionStatus.STOPPED,
-    pauseAfterRecognitionEnd: false,
-  }))
-  .case(disconnect, (state, status) => ({
+  .case(disconnect, (state) => ({
     ...state,
     status: SpeechRecognitionStatus.STOPPED,
     error: undefined,
-    pauseAfterRecognitionEnd: true,
   }))
   .case(disconnectAndReset, (state) => ({
     ...state,
@@ -37,7 +30,6 @@ export const speechRecognitionReducer = reducerWithInitialState(initialState)
     finalTranscript: "",
     interimTranscript: "",
     error: undefined,
-    pauseAfterRecognitionEnd: false,
   }))
   .case(setTranscripts, (state, { transcript, finalTranscript, interimTranscript }) => ({
     ...state,

@@ -35,10 +35,6 @@ export interface SpeechRecognitionState {
   finalTranscript: string; // Completed transcript
 }
 
-export interface SpeechRecognitionInternalState extends SpeechRecognitionState {
-  pauseAfterRecognitionEnd: boolean;
-}
-
 export enum SpeechRecognitionStatus {
   READY = "ready",
   STOPPED = "stopped",
@@ -54,7 +50,7 @@ export interface SpeechRecognitionOptions {
   onResult: (final: string, interim: string, raw: SpeechRecognitionEvent) => void;
   onDisconnect: () => void;
   onStart: (event: Event) => void; // Fired when the speech recognition service has begun listening to incoming audio with intent to recognize grammars associated with the current SpeechRecognition.
-  onEnd?: () => void; // Fired when the speech recognition service has disconnected.
+  onEnd?: (event: Event) => void; // Fired when the speech recognition service has disconnected.
   onAudioStart?: (event: Event) => void; // Fired when the user agent has started to capture audio.
   onAudioEnd?: (event: Event) => void; // Fired when the user agent has finished capturing audio.
   onNoMatch?: (event: Event) => void; // Fired when the speech recognition service returns a final result with no significant recognition. This may involve some degree of recognition, which doesn't meet or exceed the confidence threshold.

@@ -5,7 +5,7 @@ import {
   SpeechRecognitionUtils,
   SpeechRecognitionDisconnectType,
   SpeechRecognitionStatus,
-  SpeechRecognitionInternalState,
+  SpeechRecognitionState,
 } from "./types";
 
 import {
@@ -13,7 +13,6 @@ import {
   setStatus,
   disconnect as disconnectAction,
   setErrorMessage,
-  pause,
   disconnectAndReset,
 } from "./actions";
 import { ERROR_NO_RECOGNITION_SUPPORT } from "./constants";
@@ -36,10 +35,9 @@ function concatTranscripts(...parts: string[]) {
 }
 
 export function useSpeechRecognition(userOptions: Partial<SpeechRecognitionOptions> = {}): SpeechRecognitionUtils {
-  const [
-    { error, status, pauseAfterRecognitionEnd, interimTranscript, finalTranscript, transcript },
-    dispatch,
-  ] = useReducer<ReducerBuilder<SpeechRecognitionInternalState>>(speechRecognitionReducer, initialState);
+  const [{ error, status, interimTranscript, finalTranscript, transcript }, dispatch] = useReducer<
+    ReducerBuilder<SpeechRecognitionState>
+  >(speechRecognitionReducer, initialState);
 
   const options = useMemo(
     () => ({
@@ -103,7 +101,6 @@ export function useSpeechRecognition(userOptions: Partial<SpeechRecognitionOptio
   }, [status, recognition, resetTranscript]);
 
   const stopListening = useCallback(() => {
-    options.onEnd && options.onEnd();
     disconnect(SpeechRecognitionDisconnectType.STOP);
   }, [disconnect]);
 
@@ -134,18 +131,6 @@ export function useSpeechRecognition(userOptions: Partial<SpeechRecognitionOptio
     [options],
   );
 
-  const onRecognitionEnd = useCallback(() => {
-    if (pauseAfterRecognitionEnd) {
-      dispatch(pause());
-    } else if (recognition) {
-      if (recognition.continuous && status !== SpeechRecognitionStatus.STARTED) {
-        startListening();
-      } else {
-        stopListening();
-      }
-    }
-  }, [pauseAfterRecognitionEnd, recognition, startListening, stopListening]);
-
   const onRecognitionError = useCallback(({ error, message }) => {
     dispatch(setErrorMessage(`${error}: ${message}`));
   }, []);
@@ -155,27 +140,22 @@ export function useSpeechRecognition(userOptions: Partial<SpeechRecognitionOptio
       recognition.continuous = options.continuous !== false;
       recognition.interimResults = options.interimResults;
       recognition.onresult = updateTranscript;
-      recognition.onend = onRecognitionEnd;
+      recognition.onend = options.onEnd || null;
       recognition.onerror = onRecognitionError;
       recognition.onstart = options.onStart;
       recognition.onaudioend = (e) => {
         options.onAudioEnd && options.onAudioEnd(e);
-        onRecognitionEnd();
+        // At this point the recognition is already stopped, but we need to update the status:
+        stopListening();
       };
     }
-  }, [onRecognitionEnd, onRecognitionError, updateTranscript, recognition, options.continuous, options.interimResults]);
+  }, [onRecognitionError, updateTranscript, recognition, options, stopListening]);
 
   useEffect(() => {
-    if (options?.autoStart) {
+    if (options.autoStart) {
       startListening();
     }
-
-    return () => {
-      if (status === SpeechRecognitionStatus.STARTED && !options.continuous) {
-        stopListening();
-      }
-    };
-  }, [status, options.autoStart, options, startListening, stopListening]);
+  }, [options.autoStart]);
 
   return {
     error,

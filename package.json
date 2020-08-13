@@ -15,6 +15,7 @@
     "build": "tsdx build",
     "test": "react-scripts test",
     "lint": "tsdx lint",
+    "lint:fix": "tsdx lint --fix",
     "prepare": "tsdx build",
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook"
